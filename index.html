@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天气日历</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 统一的 Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e3a8a',
+                        secondary: '#3b82f6',
+                        dark: '#0f172a',
+                        light: '#f1f5f9',
+                        accent: '#f59e0b'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .card-shadow {
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+            .calendar-day {
+                aspect-ratio: 1/1;
+            }
+            .holiday {
+                color: #ef4444;
+            }
+            .workday {
+                color: #3b82f6;
+            }
+            .overtime {
+                background-color: #f59e0b;
+                color: white;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-dark to-primary min-h-screen text-light p-4 md:p-6">
+    <div class="container mx-auto max-w-7xl">
+        <!-- API Key 输入区域 -->
+        <div id="api-key-section" class="mb-6 p-4 glass-effect rounded-lg card-shadow">
+            <h2 class="text-xl font-bold mb-3">API 设置</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="qweather-key" class="block mb-2 text-sm font-medium">和风天气 API Key</label>
+                    <div class="flex">
+                        <input type="text" id="qweather-key" class="bg-gray-700 text-white rounded-l-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入和风天气 API Key">
+                        <button id="save-qweather-key" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-lg transition-colors">保存</button>
+                    </div>
+                </div>
+                <div>
+                    <label for="calendar-key" class="block mb-2 text-sm font-medium">万年历 API Key</label>
+                    <div class="flex">
+                        <input type="text" id="calendar-key" class="bg-gray-700 text-white rounded-l-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入万年历 API Key">
+                        <button id="save-calendar-key" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-lg transition-colors">保存</button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3 text-sm text-gray-300">
+                <p>提示：获取 API Key 后，页面将自动刷新数据</p>
+                <p>和风天气 API: <a href="https://dev.qweather.com/" target="_blank" class="text-blue-400 hover:underline">https://dev.qweather.com/</a></p>
+                <p>万年历 API: <a href="https://www.mxnzp.com/" target="_blank" class="text-blue-400 hover:underline">https://www.mxnzp.com/</a></p>
+            </div>
+        </div>
+
+        <!-- 主要内容区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧区域 - 时间、天气信息 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 时间卡片 -->
+                <div class="glass-effect rounded-lg p-6 card-shadow">
+                    <div id="date-time" class="text-center">
+                        <div class="text-2xl font-bold mb-1" id="current-date">02月13日</div>
+                        <div class="text-sm opacity-80 mb-2" id="current-weekday">星期五</div>
+                        <div class="text-5xl font-bold" id="current-time">20:42</div>
+                    </div>
+                </div>
+
+                <!-- 当天天气卡片 -->
+                <div class="glass-effect rounded-lg p-6 card-shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold" id="weather-location">北京</h2>
+                        <span class="text-sm opacity-80" id="weather-update-time">更新于 20:42</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <img id="weather-icon" src="https://cdn.qweather.com/weather_icon/100.png" alt="晴" class="w-16 h-16 mr-4">
+                            <div>
+                                <div class="text-4xl font-bold" id="current-temp">7°C</div>
+                                <div class="text-sm opacity-80" id="feels-like">体感温度 4°C</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-semibold" id="weather-description">晴</div>
+                            <div class="text-sm opacity-80" id="weather-details">南风 2级 | 湿度 45%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 三天天气预报卡片 -->
+                <div class="glass-effect rounded-lg p-6 card-shadow">
+                    <h2 class="text-xl font-bold mb-4">天气预报</h2>
+                    <div class="grid grid-cols-3 gap-4">
+                        <!-- 今天 -->
+                        <div class="text-center">
+                            <div class="text-sm font-medium mb-2">今天</div>
+                            <img id="today-icon" src="https://cdn.qweather.com/weather_icon/100.png" alt="晴" class="w-10 h-10 mx-auto mb-2">
+                            <div class="text-sm mb-1" id="today-desc">晴</div>
+                            <div class="text-sm" id="today-temp">-2~14°C</div>
+                        </div>
+                        <!-- 明天 -->
+                        <div class="text-center">
+                            <div class="text-sm font-medium mb-2">明天</div>
+                            <img id="tomorrow-icon" src="https://cdn.qweather.com/weather_icon/100.png" alt="晴" class="w-10 h-10 mx-auto mb-2">
+                            <div class="text-sm mb-1" id="tomorrow-desc">晴</div>
+                            <div class="text-sm" id="tomorrow-temp">-3~15°C</div>
+                        </div>
+                        <!-- 后天 -->
+                        <div class="text-center">
+                            <div class="text-sm font-medium mb-2">后天</div>
+                            <img id="day-after-tomorrow-icon" src="https://cdn.qweather.com/weather_icon/100.png" alt="晴" class="w-10 h-10 mx-auto mb-2">
+                            <div class="text-sm mb-1" id="day-after-tomorrow-desc">晴</div>
+                            <div class="text-sm" id="day-after-tomorrow-temp">-4~6°C</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧区域 - 月历 -->
+            <div class="lg:col-span-2">
+                <div class="glass-effect rounded-lg p-6 card-shadow h-full">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold" id="calendar-title">2024年10月</h2>
+                        <div class="flex space-x-2">
+                            <button id="prev-month" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors">
+                                <i class="fa fa-chevron-left"></i>
+                            </button>
+                            <button id="today-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">今天</button>
+                            <button id="next-month" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors">
+                                <i class="fa fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 星期标题 -->
+                    <div class="grid grid-cols-7 gap-2 mb-2">
+                        <div class="text-center font-medium text-sm">日</div>
+                        <div class="text-center font-medium text-sm">一</div>
+                        <div class="text-center font-medium text-sm">二</div>
+                        <div class="text-center font-medium text-sm">三</div>
+                        <div class="text-center font-medium text-sm">四</div>
+                        <div class="text-center font-medium text-sm">五</div>
+                        <div class="text-center font-medium text-sm">六</div>
+                    </div>
+
+                    <!-- 日历网格 -->
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+                        <!-- 日历日期将通过 JavaScript 动态生成 -->
+                    </div>
+
+                    <!-- 图例说明 -->
+                    <div class="mt-6 flex flex-wrap gap-4 text-sm">
+                        <div class="flex items-center">
+                            <span class="inline-block w-4 h-4 rounded-full bg-red-500 mr-2"></span>
+                            <span>节假日</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="inline-block w-4 h-4 rounded-full bg-blue-500 mr-2"></span>
+                            <span>调休日</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="inline-block w-4 h-4 rounded-full bg-yellow-500 mr-2"></span>
+                            <span>加班日</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="inline-block w-4 h-4 rounded-full bg-transparent border border-white mr-2"></span>
+                            <span>普通日</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentDate = new Date();
+        let currentYear = currentDate.getFullYear();
+        let currentMonth = currentDate.getMonth();
+        let overtimeDays = JSON.parse(localStorage.getItem('overtimeDays')) || [];
+
+        // API Key 管理
+        const qweatherKey = localStorage.getItem('qweatherKey') || '';
+        const calendarKey = localStorage.getItem('calendarKey') || '';
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置保存的 API Key
+            document.getElementById('qweather-key').value = qweatherKey;
+            document.getElementById('calendar-key').value = calendarKey;
+
+            // 保存 API Key 事件
+            document.getElementById('save-qweather-key').addEventListener('click', function() {
+                const key = document.getElementById('qweather-key').value.trim();
+                if (key) {
+                    localStorage.setItem('qweatherKey', key);
+                    updateWeatherData();
+                }
+            });
+
+            document.getElementById('save-calendar-key').addEventListener('click', function() {
+                const key = document.getElementById('calendar-key').value.trim();
+                if (key) {
+                    localStorage.setItem('calendarKey', key);
+                    generateCalendar();
+                }
+            });
+
+            // 日历导航事件
+            document.getElementById('prev-month').addEventListener('click', function() {
+                currentMonth--;
+                if (currentMonth < 0) {
+                    currentMonth = 11;
+                    currentYear--;
+                }
+                generateCalendar();
+            });
+
+            document.getElementById('next-month').addEventListener('click', function() {
+                currentMonth++;
+                if (currentMonth > 11) {
+                    currentMonth = 0;
+                    currentYear++;
+                }
+                generateCalendar();
+            });
+
+            document.getElementById('today-btn').addEventListener('click', function() {
+                currentDate = new Date();
+                currentYear = currentDate.getFullYear();
+                currentMonth = currentDate.getMonth();
+                generateCalendar();
+                updateDateTime();
+            });
+
+            // 初始化时间显示
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+
+            // 初始化日历
+            generateCalendar();
+
+            // 初始化天气数据
+            updateWeatherData();
+        });
+
+        // 更新日期时间
+        function updateDateTime() {
+            const now = new Date();
+            const options = { month: '2-digit', day: '2-digit' };
+            const weekdayOptions = { weekday: 'long' };
+            const timeOptions = { hour: '2-digit', minute: '2-digit' };
+
+            document.getElementById('current-date').textContent = now.toLocaleDateString('zh-CN', options);
+            document.getElementById('current-weekday').textContent = now.toLocaleDateString('zh-CN', weekdayOptions);
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('zh-CN', timeOptions);
+        }
+
+        // 生成日历
+        function generateCalendar() {
+            const calendarGrid = document.getElementById('calendar-grid');
+            calendarGrid.innerHTML = '';
+
+            // 更新日历标题
+            const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+            document.getElementById('calendar-title').textContent = `${currentYear}年${monthNames[currentMonth]}`;
+
+            // 获取当月第一天是星期几
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+
+            // 获取当月的天数
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            // 获取上个月的天数
+            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+            // 添加上个月的日期
+            for (let i = 0; i < firstDay; i++) {
+                const day = daysInPrevMonth - firstDay + i + 1;
+                const dayElement = createCalendarDay(day, true);
+                calendarGrid.appendChild(dayElement);
+            }
+
+            // 添加当月的日期
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${currentYear}${String(currentMonth + 1).padStart(2, '0')}${String(i).padStart(2, '0')}`;
+                const dayElement = createCalendarDay(i, false, dateStr);
+                calendarGrid.appendChild(dayElement);
+            }
+
+            // 添加下个月的日期
+            const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+            const remainingCells = totalCells - (firstDay + daysInMonth);
+            for (let i = 1; i <= remainingCells; i++) {
+                const dayElement = createCalendarDay(i, true);
+                calendarGrid.appendChild(dayElement);
+            }
+
+            // 如果有 API Key，获取节假日信息
+            if (calendarKey) {
+                fetchHolidayData();
+            }
+        }
+
+        // 创建日历日期元素
+        function createCalendarDay(day, isOtherMonth, dateStr = '') {
+            const dayElement = document.createElement('div');
+            dayElement.className = `calendar-day flex flex-col items-center justify-center rounded-lg p-1 ${isOtherMonth ? 'opacity-30' : 'hover:bg-white/10 cursor-pointer'}`;
+            
+            // 检查是否为加班日
+            const isOvertime = !isOtherMonth && overtimeDays.includes(dateStr);
+            if (isOvertime) {
+                dayElement.classList.add('overtime');
+            }
+
+            // 日期数字
+            const dayNumber = document.createElement('span');
+            dayNumber.className = 'text-lg font-medium';
+            dayNumber.textContent = day;
+            dayElement.appendChild(dayNumber);
+
+            // 农历日期占位符
+            const lunarDay = document.createElement('span');
+            lunarDay.className = 'text-xs mt-1';
+            lunarDay.textContent = '';
+            dayElement.appendChild(lunarDay);
+
+            // 如果是当月日期，添加点击事件切换加班状态
+            if (!isOtherMonth && dateStr) {
+                dayElement.addEventListener('click', function() {
+                    toggleOvertime(dateStr);
+                });
+            }
+
+            return dayElement;
+        }
+
+        // 切换加班日状态
+        function toggleOvertime(dateStr) {
+            const index = overtimeDays.indexOf(dateStr);
+            if (index > -1) {
+                overtimeDays.splice(index, 1);
+            } else {
+                overtimeDays.push(dateStr);
+            }
+            localStorage.setItem('overtimeDays', JSON.stringify(overtimeDays));
+            generateCalendar();
+        }
+
+        // 获取节假日数据
+        function fetchHolidayData() {
+            const startDate = `${currentYear}${String(currentMonth + 1).padStart(2, '0')}01`;
+            const endDate = `${currentYear}${String(currentMonth + 1).padStart(2, '0')}${new Date(currentYear, currentMonth + 1, 0).getDate()}`;
+            
+            // 使用万年历 API 获取节假日数据
+            const url = `https://www.mxnzp.com/api/holiday/list/${startDate}/${endDate}?app_id=ixssxqertpltndez&app_secret=QUF5S2JLZkNqSHdyeVVLczdCNSt1QT09`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 1 && data.data) {
+                        updateCalendarWithHoliday(data.data);
+                    }
+                })
+                .catch(error => {
+                    console.error('获取节假日数据失败:', error);
+                });
+        }
+
+        // 更新日历上的节假日信息
+        function updateCalendarWithHoliday(holidayData) {
+            const calendarDays = document.querySelectorAll('#calendar-grid > div');
+            const monthPrefix = `${currentYear}${String(currentMonth + 1).padStart(2, '0')}`;
+            
+            calendarDays.forEach(dayElement => {
+                const dayNumber = dayElement.querySelector('span:first-child').textContent;
+                const dateStr = `${monthPrefix}${String(dayNumber).padStart(2, '0')}`;
+                const holiday = holidayData.find(h => h.date === dateStr);
+                
+                if (holiday) {
+                    // 更新农历日期
+                    const lunarDayElement = dayElement.querySelector('span:last-child');
+                    lunarDayElement.textContent = holiday.lunarCalendar;
+                    
+                    // 根据类型设置样式
+                    if (holiday.type === 1) { // 节假日
+                        dayElement.classList.add('holiday');
+                    } else if (holiday.type === 2) { // 调休日
+                        dayElement.classList.add('workday');
+                    }
+                }
+            });
+        }
+
+        // 更新天气数据
+        function updateWeatherData() {
+            if (!qweatherKey) {
+                // 如果没有 API Key，显示模拟数据
+                updateWeatherUI(getMockWeatherData());
+                return;
+            }
+
+            // 使用和风天气 API 获取天气数据
+            const location = '101010100'; // 北京的 location ID
+            const nowUrl = `https://devapi.qweather.com/v7/weather/now?key=${qweatherKey}&location=${location}`;
+            const forecastUrl = `https://devapi.qweather.com/v7/weather/7d?key=${qweatherKey}&location=${location}`;
+
+            // 获取实时天气
+            fetch(nowUrl)
+                .then(response => response.json())
+                .then(nowData => {
+                    if (nowData.code === '200') {
+                        // 获取天气预报
+                        fetch(forecastUrl)
+                            .then(response => response.json())
+                            .then(forecastData => {
+                                if (forecastData.code === '200') {
+                                    updateWeatherUI({
+                                        now: nowData.now,
+                                        forecast: forecastData.daily.slice(0, 3)
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('获取天气预报失败:', error);
+                                updateWeatherUI(getMockWeatherData());
+                            });
+                    }
+                })
+                .catch(error => {
+                    console.error('获取实时天气失败:', error);
+                    updateWeatherUI(getMockWeatherData());
+                });
+        }
+
+        // 更新天气 UI
+        function updateWeatherUI(weatherData) {
+            const now = weatherData.now;
+            const forecast = weatherData.forecast;
+
+            // 更新实时天气
+            document.getElementById('weather-location').textContent = '北京';
+            document.getElementById('weather-update-time').textContent = `更新于 ${now.updateTime ? now.updateTime.substring(11, 16) : new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+            document.getElementById('weather-icon').src = `https://cdn.qweather.com/weather_icon/${now.icon || '100'}.png`;
+            document.getElementById('weather-icon').alt = now.text || '晴';
+            document.getElementById('current-temp').textContent = `${now.temp || '7'}°C`;
+            document.getElementById('feels-like').textContent = `体感温度 ${now.feelsLike || '4'}°C`;
+            document.getElementById('weather-description').textContent = now.text || '晴';
+            document.getElementById('weather-details').textContent = `${now.windDir || '南'}风 ${now.windScale || '2'}级 | 湿度 ${now.humidity || '45'}%`;
+
+            // 更新天气预报
+            if (forecast && forecast.length >= 3) {
+                // 今天
+                document.getElementById('today-icon').src = `https://cdn.qweather.com/weather_icon/${forecast[0].iconDay || '100'}.png`;
+                document.getElementById('today-icon').alt = forecast[0].textDay || '晴';
+                document.getElementById('today-desc').textContent = forecast[0].textDay || '晴';
+                document.getElementById('today-temp').textContent = `${forecast[0].tempMin || '-2'}~${forecast[0].tempMax || '14'}°C`;
+
+                // 明天
+                document.getElementById('tomorrow-icon').src = `https://cdn.qweather.com/weather_icon/${forecast[1].iconDay || '100'}.png`;
+                document.getElementById('tomorrow-icon').alt = forecast[1].textDay || '晴';
+                document.getElementById('tomorrow-desc').textContent = forecast[1].textDay || '晴';
+                document.getElementById('tomorrow-temp').textContent = `${forecast[1].tempMin || '-3'}~${forecast[1].tempMax || '15'}°C`;
+
+                // 后天
+                document.getElementById('day-after-tomorrow-icon').src = `https://cdn.qweather.com/weather_icon/${forecast[2].iconDay || '100'}.png`;
+                document.getElementById('day-after-tomorrow-icon').alt = forecast[2].textDay || '晴';
+                document.getElementById('day-after-tomorrow-desc').textContent = forecast[2].textDay || '晴';
+                document.getElementById('day-after-tomorrow-temp').textContent = `${forecast[2].tempMin || '-4'}~${forecast[2].tempMax || '6'}°C`;
+            }
+        }
+
+        // 获取模拟天气数据
+        function getMockWeatherData() {
+            return {
+                now: {
+                    temp: '7',
+                    feelsLike: '4',
+                    text: '晴',
+                    windDir: '南',
+                    windScale: '2',
+                    humidity: '45',
+                    icon: '100',
+                    updateTime: new Date().toISOString()
+                },
+                forecast: [
+                    {
+                        tempMin: '-2',
+                        tempMax: '14',
+                        textDay: '晴',
+                        iconDay: '100'
+                    },
+                    {
+                        tempMin: '-3',
+                        tempMax: '15',
+                        textDay: '晴',
+                        iconDay: '100'
+                    },
+                    {
+                        tempMin: '-4',
+                        tempMax: '6',
+                        textDay: '晴',
+                        iconDay: '100'
+                    }
+                ]
+            };
+        }
+    </script>
+</body>
+</html>
